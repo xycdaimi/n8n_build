@@ -1,0 +1,65 @@
+services:
+  n8n:
+    image: n8nio/n8n:nightly
+    container_name: n8nChinese
+    restart: unless-stopped
+    ports:
+      - "15678:5678"
+      # Expose task broker for debugging (NOT required for container-to-container communication)
+      - "15679:5679"
+    env_file:
+      - .env
+    environment:
+      # Core listen settings (prefer putting values in .env; defaults provided)
+      N8N_PORT: ${N8N_PORT:-5678}
+      N8N_HOST: ${N8N_HOST:-0.0.0.0}
+      N8N_LISTEN_ADDRESS: ${N8N_LISTEN_ADDRESS:-0.0.0.0}
+
+      # Privacy / no-phone-home (prefer putting values in .env; defaults provided)
+      N8N_DIAGNOSTICS_ENABLED: ${N8N_DIAGNOSTICS_ENABLED:-false}
+      N8N_VERSION_NOTIFICATIONS_ENABLED: ${N8N_VERSION_NOTIFICATIONS_ENABLED:-false}
+      N8N_TEMPLATES_ENABLED: ${N8N_TEMPLATES_ENABLED:-false}
+      EXTERNAL_FRONTEND_HOOKS_URLS: ${EXTERNAL_FRONTEND_HOOKS_URLS:-}
+      N8N_DIAGNOSTICS_CONFIG_FRONTEND: ${N8N_DIAGNOSTICS_CONFIG_FRONTEND:-}
+      N8N_DIAGNOSTICS_CONFIG_BACKEND: ${N8N_DIAGNOSTICS_CONFIG_BACKEND:-}
+
+      # Task runners (prefer putting values in .env; defaults provided)
+      N8N_RUNNERS_ENABLED: ${N8N_RUNNERS_ENABLED:-true}
+      N8N_RUNNERS_MODE: ${N8N_RUNNERS_MODE:-external}
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN:-}
+      N8N_RUNNERS_BROKER_LISTEN_ADDRESS: ${N8N_RUNNERS_BROKER_LISTEN_ADDRESS:-0.0.0.0}
+      N8N_RUNNERS_BROKER_PORT: ${N8N_RUNNERS_BROKER_PORT:-5679}
+    volumes:
+      - ./.n8n:/home/node/.n8n
+      # Override editor UI with repo's prebuilt dist (cross-platform path)
+      - ./dist:/usr/local/lib/node_modules/n8n/node_modules/n8n-editor-ui/dist:ro
+    networks:
+      - n8n-net
+
+  n8n-runners:
+    image: n8n-runners-custom:local
+    build:
+      context: .
+      dockerfile: n8n_runners/Dockerfile
+      args:
+        RUNNERS_BASE_IMAGE: ${RUNNERS_BASE_IMAGE:-n8nio/runners:latest}
+        # IMPORTANT: If these default to empty, compose will override Dockerfile defaults with "",
+        # and the deps will NOT be installed.
+        JS_DEPS: ${RUNNERS_JS_DEPS:-moment uuid}
+        PY_DEPS: ${RUNNERS_PY_DEPS:-numpy pandas}
+    container_name: n8n-runners
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    env_file:
+      - .env
+    environment:
+      N8N_RUNNERS_TASK_BROKER_URI: ${N8N_RUNNERS_TASK_BROKER_URI:-http://n8n:5679}
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN:-}
+    networks:
+      - n8n-net
+
+networks:
+  n8n-net:
+    driver: bridge
+
