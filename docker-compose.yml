@@ -4,9 +4,9 @@ services:
     container_name: n8nChinese
     restart: unless-stopped
     ports:
-      - "15678:5678"
+      - "${N8N_PORT_PUBLIC:-15678}:${N8N_PORT:-5678}"
       # Expose task broker for debugging (NOT required for container-to-container communication)
-      - "15679:5679"
+      - "${N8N_RUNNERS_BROKER_PORT_PUBLIC:-15679}:${N8N_RUNNERS_BROKER_PORT:-5679}"
     env_file:
       - .env
     environment:
@@ -14,6 +14,7 @@ services:
       N8N_PORT: ${N8N_PORT:-5678}
       N8N_HOST: ${N8N_HOST:-0.0.0.0}
       N8N_LISTEN_ADDRESS: ${N8N_LISTEN_ADDRESS:-0.0.0.0}
+      N8N_SECURE_COOKIE: ${N8N_SECURE_COOKIE:-false}
 
       # Privacy / no-phone-home (prefer putting values in .env; defaults provided)
       N8N_DIAGNOSTICS_ENABLED: ${N8N_DIAGNOSTICS_ENABLED:-false}
@@ -62,4 +63,3 @@ services:
 networks:
   n8n-net:
     driver: bridge
-
